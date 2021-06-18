@@ -104,7 +104,10 @@ void Smoother::ComputeOperators()
 
     for (auto n = 0; n < m_mesh->GetNumNodes(); n++)
     {
-        if (m_mesh->m_nodesTypes[n] != 1 && m_mesh->m_nodesTypes[n] != 2 && m_mesh->m_nodesTypes[n] != 3 && m_mesh->m_nodesTypes[n] != 4)
+        if (m_mesh->m_nodesTypes[n] != 1 &&
+            m_mesh->m_nodesTypes[n] != 2 &&
+            m_mesh->m_nodesTypes[n] != 3 &&
+            m_mesh->m_nodesTypes[n] != 4)
         {
             continue;
         }
@@ -174,7 +177,7 @@ void Smoother::ComputeWeights()
 
             //compute the contravariant base vectors
             const double determinant = J[n][0] * J[n][3] - J[n][3] * J[n][1];
-            if (determinant == 0.0)
+            if (IsEqual(determinant, 0.0))
             {
                 continue;
             }
@@ -284,7 +287,7 @@ void Smoother::ComputeOperatorsNode(size_t currentNode)
         const auto numFaceNodes = m_mesh->GetNumFaceEdges(m_topologySharedFaces[currentTopology][f]);
 
         // the value of xi and eta needs to be estimated at the circumcenters, calculated the contributions of each node
-        if (numFaceNodes == 3)
+        if (numFaceNodes == numNodesInTriangle)
         {
             // for triangular faces
             const auto nodeIndex = FindIndex(m_mesh->m_facesNodes[m_topologySharedFaces[currentTopology][f]], currentNode);
@@ -373,8 +376,7 @@ void Smoother::ComputeOperatorsNode(size_t currentNode)
                 m_leftYFaceCenterCache[f] += m_mesh->m_nodes[m_topologyConnectedNodes[currentTopology][i]].y * m_Az[currentTopology][faceLeftIndex][i];
             }
 
-            double alpha = leftXi * xiOne + leftEta * etaOne;
-            alpha = alpha / (xiOne * xiOne + etaOne * etaOne);
+            double const alpha = (leftXi * xiOne + leftEta * etaOne) / (xiOne * xiOne + etaOne * etaOne);
 
             alpha_x = alpha;
             xiBoundary = alpha * xiOne;
@@ -401,8 +403,8 @@ void Smoother::ComputeOperatorsNode(size_t currentNode)
             const auto faceLeft = m_topologySharedFaces[currentTopology][faceLeftIndex];
             const auto faceRight = m_topologySharedFaces[currentTopology][faceRightIndex];
 
-            if ((faceLeft != m_mesh->m_edgesFaces[edgeIndex][0] && faceLeft != m_mesh->m_edgesFaces[edgeIndex][1]) ||
-                (faceRight != m_mesh->m_edgesFaces[edgeIndex][0] && faceRight != m_mesh->m_edgesFaces[edgeIndex][1]))
+            if (faceLeft != m_mesh->m_edgesFaces[edgeIndex][0] && faceLeft != m_mesh->m_edgesFaces[edgeIndex][1] ||
+                faceRight != m_mesh->m_edgesFaces[edgeIndex][0] && faceRight != m_mesh->m_edgesFaces[edgeIndex][1])
             {
                 throw std::invalid_argument("Smoother::ComputeOperatorsNode: Invalid argument.");
             }
@@ -575,7 +577,7 @@ void Smoother::ComputeNodeXiEta(size_t currentNode,
                 auto face = m_mesh->m_edgesFaces[edge][ff];
                 if (face != faceLeft && face != faceRight)
                 {
-                    isSquare = isSquare && m_mesh->GetNumFaceEdges(face) == 4;
+                    isSquare = isSquare && m_mesh->GetNumFaceEdges(face) == numNodesQuads;
                 }
             }
             if (!isSquare)
@@ -601,13 +603,13 @@ void Smoother::ComputeNodeXiEta(size_t currentNode,
             {
                 // Inner node
                 numNonStencilQuad = m_mesh->m_nodesNumEdges[nextNode] - 2;
-                thetaSquare[f + 1] = (2.0 - double(numNonStencilQuad) * 0.5) * M_PI;
+                thetaSquare[f + 1] = (2.0 - static_cast<double>(numNonStencilQuad) * 0.5) * M_PI;
             }
             if (m_mesh->m_nodesTypes[nextNode] == 2)
             {
                 // boundary node
                 numNonStencilQuad = m_mesh->m_nodesNumEdges[nextNode] - 1 - m_mesh->m_edgesNumFaces[edgeIndex];
-                thetaSquare[f + 1] = (1.0 - double(numNonStencilQuad) * 0.5) * M_PI;
+                thetaSquare[f + 1] = (1.0 - static_cast<double>(numNonStencilQuad) * 0.5) * M_PI;
             }
             if (m_mesh->m_nodesTypes[nextNode] == 3)
             {
@@ -615,11 +617,11 @@ void Smoother::ComputeNodeXiEta(size_t currentNode,
                 thetaSquare[f + 1] = 0.5 * M_PI;
             }
 
-            if (m_sharedFacesCache[f] != sizetMissingValue && m_sharedFacesCache[f] > 1 && m_mesh->GetNumFaceEdges(m_sharedFacesCache[f]) == 4)
+            if (m_sharedFacesCache[f] != sizetMissingValue && m_sharedFacesCache[f] > 1 && m_mesh->GetNumFaceEdges(m_sharedFacesCache[f]) == numNodesQuads)
             {
                 numNonStencilQuad += 1;
             }
-            if (m_sharedFacesCache[leftFaceIndex] != sizetMissingValue && m_sharedFacesCache[leftFaceIndex] > 1 && m_mesh->GetNumFaceEdges(m_sharedFacesCache[leftFaceIndex]) == 4)
+            if (m_sharedFacesCache[leftFaceIndex] != sizetMissingValue && m_sharedFacesCache[leftFaceIndex] > 1 && m_mesh->GetNumFaceEdges(m_sharedFacesCache[leftFaceIndex]) == numNodesQuads)
             {
                 numNonStencilQuad += 1;
             }
@@ -640,7 +642,7 @@ void Smoother::ComputeNodeXiEta(size_t currentNode,
             continue;
 
         // non boundary face
-        if (m_mesh->GetNumFaceEdges(m_sharedFacesCache[f]) == 4)
+        if (m_mesh->GetNumFaceEdges(m_sharedFacesCache[f]) == numNodesQuads)
         {
             for (auto n = 0; n < m_mesh->GetNumFaceEdges(m_sharedFacesCache[f]); n++)
             {
@@ -672,7 +674,7 @@ void Smoother::ComputeNodeXiEta(size_t currentNode,
         auto numFaceNodes = m_mesh->GetNumFaceEdges(m_sharedFacesCache[f]);
         double phi = OptimalEdgeAngle(numFaceNodes);
 
-        if (isSquareFace[f] || numFaceNodes == 4)
+        if (isSquareFace[f] || numFaceNodes == numNodesQuads)
         {
             size_t nextNode = static_cast<size_t>(f) + static_cast<size_t>(2);
             if (nextNode > numSharedFaces)
@@ -686,7 +688,7 @@ void Smoother::ComputeNodeXiEta(size_t currentNode,
                 numSquaredTriangles += 1;
                 phiSquaredTriangles += phi;
             }
-            else if (numFaceNodes == 4)
+            else if (numFaceNodes == numNodesQuads)
             {
                 numNonStencilQuad += 1;
                 phiQuads += phi;
@@ -731,7 +733,7 @@ void Smoother::ComputeNodeXiEta(size_t currentNode,
     }
     else if (numSharedFaces > 0)
     {
-        throw MeshGeometryError("Smoother::ComputeNodeXiEta: Fatal error (phiTot=0)", currentNode, MeshLocations::Nodes);
+        throw MeshGeometryError("Smoother::ComputeNodeXiEta: Fatal error (phiTot <= 1e-18) and number of shared faces > 0 ", currentNode, MeshLocations::Nodes);
     }
 
     double phi0 = 0.0;
@@ -762,7 +764,7 @@ void Smoother::ComputeNodeXiEta(size_t currentNode,
         const auto numFaceNodes = m_mesh->GetNumFaceEdges(m_sharedFacesCache[f]);
         if (numFaceNodes > maximumNumberOfEdgesPerNode)
         {
-            throw AlgorithmError("Smoother::ComputeNodeXiEta: The number of face nodes is greater than the maximum number of edges per node.");
+            throw MeshGeometryError("Smoother::ComputeNodeXiEta: The number of face nodes is greater than the maximum number of edges per node", currentNode, MeshLocations::Nodes);
         }
 
         dPhi0 = OptimalEdgeAngle(numFaceNodes);

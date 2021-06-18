@@ -52,6 +52,7 @@ void Orthogonalizer::Compute()
     // Compute mesh aspect ratios
     m_mesh->ComputeAspectRatios(m_aspectRatios);
 
+    // Volume based smoother is not computed
     for (auto n = 0; n < m_mesh->GetNumNodes(); n++)
     {
         if (m_mesh->m_nodesTypes[n] != 1 && m_mesh->m_nodesTypes[n] != 2)

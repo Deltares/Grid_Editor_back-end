@@ -83,7 +83,7 @@ namespace meshkernel
         /// @brief Computes all topologies of the elliptic smoother
         void ComputeTopologies();
 
-        /// @brief Computes all operators of the elliptic smoother
+        /// @brief Computes all operators of the elliptic smoother (orthonet_comp_ops)
         void ComputeOperators();
 
         /// @brief Compute nodes local coordinates, sice-effects only for sphericalAccurate projection (comp_local_coords)
